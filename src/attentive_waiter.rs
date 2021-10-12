@@ -30,11 +30,13 @@ use std::time::{Duration, Instant};
 /// # let mut items = Vec::new();
 /// // Acquire a token before we ever try any item.
 /// let mut token = waiter.token();
-/// loop {
+/// 'a: loop {
 ///     // For every item, try to acquire a lock.
 ///     for item in &items {
 ///         if item.try_lock() {
-///             break;
+///             break 'a;
+///         } else {
+///             panic!();
 ///         }
 ///     }
 ///     // If a thread notified us about
@@ -56,9 +58,11 @@ pub struct AttentiveWaiter {
 /// a mutable reference to this will allow
 /// the wait function never park the thread
 /// in case we missed a notification.
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Hash)]
 pub struct Token(usize);
 
 /// The result of waiting on an [`AttentiveWaiter`].
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Hash)]
 pub enum WaitResult {
     /// This thread was successfully notified.
     Success,
@@ -89,13 +93,13 @@ impl AttentiveWaiter {
         let key = self as *const _ as usize;
 
         let validate = || {
-            let new_token = self.count.load(Ordering::Relaxed);
+            let new_token = self.count.load(Ordering::SeqCst);
             if *token < new_token {
-                self.any_waiting.fetch_add(1, Ordering::AcqRel);
                 *token = new_token;
-                true
-            } else {
                 false
+            } else {
+                self.any_waiting.fetch_add(1, Ordering::AcqRel);
+                true
             }
         };
 
@@ -169,11 +173,11 @@ impl AttentiveWaiter {
                 // Adding one to the waiting count is important because
                 // that signals other threads to acquire the parking lot
                 // queue lock, which must be done after the hook is run.
-                self.any_waiting.fetch_add(1, Ordering::AcqRel);
-                hook();
-                true
-            } else {
                 false
+            } else {
+                hook();
+                self.any_waiting.fetch_add(1, Ordering::AcqRel);
+                true
             }
         };
 
@@ -285,6 +289,8 @@ impl AttentiveWaiter {
     ///
     /// Returns the number of threads woken up.
     pub fn notify_all(&self) -> usize {
+        self.count.fetch_add(1, Ordering::Release);
+
         let key = self as *const _ as usize;
 
         let unparked_threads = unsafe { unpark_all(key, DEFAULT_UNPARK_TOKEN) };
@@ -292,5 +298,77 @@ impl AttentiveWaiter {
         self.any_waiting
             .fetch_sub(unparked_threads as i16, Ordering::Relaxed);
         unparked_threads
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::Ordering::{Relaxed, SeqCst};
+    use crate::attentive_waiter::{AttentiveWaiter, WaitResult};
+
+    #[test]
+    fn ensure_const() {
+        const WAITER_CONST: AttentiveWaiter = AttentiveWaiter::new();
+        static WAITER_STATIC: AttentiveWaiter = AttentiveWaiter::new();
+        let _ = (WAITER_CONST, &WAITER_STATIC);
+    }
+
+    #[test]
+    fn wait() {
+        let waiter = AttentiveWaiter::new();
+        let mut token = waiter.token();
+        assert_eq!(waiter.notify_all(), 0);
+        assert_eq!(waiter.wait(&mut token), WaitResult::EarlyRet);
+        assert_eq!(waiter.notify_all(), 0);
+        assert_eq!(waiter.wait_until(&mut token, std::time::Instant::now()), WaitResult::EarlyRet);
+        assert_eq!(waiter.notify_all(), 0);
+        assert_eq!(waiter.wait_for(&mut token, std::time::Duration::from_secs(0)), WaitResult::EarlyRet);
+    }
+
+    #[test]
+    fn timeout() {
+        let waiter = AttentiveWaiter::new();
+        let mut token = waiter.token();
+        assert_eq!(waiter.wait_until(&mut token, std::time::Instant::now()), WaitResult::TimedOut);
+        assert_eq!(waiter.wait_for(&mut token, std::time::Duration::from_secs(0)), WaitResult::TimedOut);
+    }
+
+    #[test]
+    fn wait_hooked() {
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let waiter = Arc::new(AttentiveWaiter::new());
+        let flag = Arc::new(AtomicBool::new(false));
+
+        let handle = {
+            let barrier = barrier.clone();
+            let waiter = waiter.clone();
+            let flag = flag.clone();
+
+            std::thread::spawn(move || {
+                let mut token = waiter.token();
+                flag.compare_exchange(false, true, Relaxed, Relaxed).unwrap();
+                barrier.wait();
+
+                let result = unsafe {
+                    waiter.hooked_wait(&mut token, || {
+                        barrier.wait();
+                        flag.compare_exchange(true, false, Relaxed, Relaxed).unwrap();
+                        barrier.wait();
+                    })
+                };
+
+                assert_eq!(result, WaitResult::Success);
+            })
+        };
+
+        barrier.wait();
+        barrier.wait();
+        assert_eq!(flag.load(SeqCst), true);
+        barrier.wait();
+        assert_eq!(flag.load(SeqCst), false);
+        assert!(waiter.notify_one());
+        handle.join().unwrap();
     }
 }
