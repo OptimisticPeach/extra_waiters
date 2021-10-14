@@ -364,8 +364,8 @@ mod tests {
         };
 
         barrier.wait();
-        barrier.wait();
         assert_eq!(flag.load(SeqCst), true);
+        barrier.wait();
         barrier.wait();
         assert_eq!(flag.load(SeqCst), false);
         assert!(waiter.notify_one());

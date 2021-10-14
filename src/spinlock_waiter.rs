@@ -36,6 +36,15 @@ impl Spinlock {
             .ok()
             .map(|_| SpinlockGuard(&self.0))
     }
+
+    /// Samples whether the lock is currently acquired.
+    ///
+    /// This will panic if the ordering is `Release` or `AcqRel`.
+    pub fn is_locked(&self, ordering: Ordering) -> bool {
+        self
+            .0
+            .load(ordering)
+    }
 }
 
 /// A guard on a [`Spinlock`] which automatically
@@ -45,5 +54,40 @@ pub struct SpinlockGuard<'a>(&'a AtomicBool);
 impl<'a> Drop for SpinlockGuard<'a> {
     fn drop(&mut self) {
         self.0.store(false, Ordering::Relaxed);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::Ordering;
+    use crate::spinlock_waiter::Spinlock;
+
+    #[test]
+    fn create() {
+        const X: Spinlock = Spinlock::new();
+        let _ = X;
+    }
+
+    #[test]
+    fn lock() {
+        let lock = Spinlock::new();
+        let _x = lock.lock();
+        assert!(lock.is_locked(Ordering::SeqCst));
+        assert!(matches!(lock.try_lock(), None));
+    }
+
+    #[test]
+    fn unlock() {
+        let lock = Spinlock::new();
+
+
+        let guard = lock.lock();
+        assert!(lock.is_locked(Ordering::SeqCst));
+        drop(guard);
+
+
+        assert!(!lock.is_locked(Ordering::SeqCst));
+
+        assert!(matches!(lock.try_lock(), Some(_)));
     }
 }
