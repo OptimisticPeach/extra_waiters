@@ -5,6 +5,8 @@ top of `parking_lot_core`. The various waiters here are a
 mix between a `Condvar` and a `Mutex`, with the specific
 details being particular to each waiter.
 
+> Note that the use of this library does not require a `Mutex`.
+
 Examples of usage can be seen in the test cases written
 for each module, however the general pattern for each of
 the waiters is as follows:
