@@ -182,3 +182,57 @@ impl OnceWaiter {
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Hash)]
 pub struct PanicError;
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Barrier};
+    use std::sync::atomic::{AtomicU8, Ordering};
+    use crate::once_waiter::OnceWaiter;
+
+    #[test]
+    fn create() {
+        const X: OnceWaiter = OnceWaiter::new();
+
+        let _ = X;
+    }
+
+    #[test]
+    fn ensure_once() {
+        for _ in 0..100 {
+            let barrier = Arc::new(Barrier::new(4));
+
+            let flag = Arc::new(AtomicU8::new(0));
+
+            let waiter = Arc::new(OnceWaiter::new());
+
+            let handles = (0..3)
+                .map(|_| {
+                    let barrier = barrier.clone();
+                    let flag = flag.clone();
+                    let waiter = waiter.clone();
+
+                    std::thread::spawn(move || {
+                        barrier.wait();
+
+                        waiter.finish(|| {
+                            flag.fetch_add(1, Ordering::SeqCst);
+                        })
+                            .unwrap();
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            barrier.wait();
+            waiter.finish(|| {
+                flag.fetch_add(1, Ordering::SeqCst);
+            })
+                .unwrap();
+
+            handles
+                .into_iter()
+                .for_each(|x| x.join().unwrap());
+
+            assert_eq!(flag.load(Ordering::SeqCst), 1);
+        }
+    }
+}
