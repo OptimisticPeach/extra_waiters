@@ -35,8 +35,6 @@ use std::time::{Duration, Instant};
 ///     for item in &items {
 ///         if item.try_lock() {
 ///             break 'a;
-///         } else {
-///             panic!();
 ///         }
 ///     }
 ///     // If a thread notified us about

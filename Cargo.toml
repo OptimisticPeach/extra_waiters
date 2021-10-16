@@ -1,6 +1,6 @@
 [package]
 name = "extra_waiters"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Patrik Buhring <patrikbuhring@gmail.com>"]
 edition = "2018"
 description = "Wait for notifications without a Mutex"

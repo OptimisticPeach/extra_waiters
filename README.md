@@ -1,5 +1,8 @@
 # `extra_waiters`
 
+[![Crate](https://img.shields.io/crates/v/extra_waiters.svg)](https://crates.io/crates/extra_waiters)
+[![API](https://docs.rs/extra_waiters/badge.svg)](https://docs.rs/extra_waiters)
+
 This library provides synchronization primitives built on
 top of `parking_lot_core`. The various waiters here are a
 mix between a `Condvar` and a `Mutex`, with the specific
@@ -11,9 +14,7 @@ Examples of usage can be seen in the test cases written
 for each module, however the general pattern for each of
 the waiters is as follows:
 
-## [`AttentiveWaiter`]
-
-[`AttentiveWaiter`]: attentive_waiter::AttentiveWaiter
+## `AttentiveWaiter`
 
 This waiter provides functions to do the following:
 
@@ -28,9 +29,7 @@ This waiter provides functions to do the following:
   functions which timeout at a certain `Instant` in time,
   or after a certain `Duration`.
 
-## [`OnceWaiter`]
-
-[`OnceWaiter`]: once_waiter::OnceWaiter
+## `OnceWaiter`
 
 This waiter provides functions to do the following:
 
@@ -50,9 +49,7 @@ This waiter provides functions to do the following:
   which timeout at a certain `Instant` in time, or after
   a certain `Duration`.
 
-## [`Spinlock`]
-
-[`Spinlock`]: spinlock_waiter::Spinlock
+## `Spinlock`
 
 A simple spinlock built on atomic primitives.
 

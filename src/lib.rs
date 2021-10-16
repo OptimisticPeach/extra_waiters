@@ -10,9 +10,7 @@
 //! for each module, however the general pattern for each of
 //! the waiters is as follows:
 //!
-//! ## [`AttentiveWaiter`]
-//!
-//! [`AttentiveWaiter`]: attentive_waiter::AttentiveWaiter
+//! ## AttentiveWaiter
 //!
 //! This waiter provides functions to do the following:
 //!
@@ -27,9 +25,7 @@
 //!   functions which timeout at a certain `Instant` in time,
 //!   or after a certain `Duration`.
 //!
-//! ## [`OnceWaiter`]
-//!
-//! [`OnceWaiter`]: once_waiter::OnceWaiter
+//! ## OnceWaiter
 //!
 //! This waiter provides functions to do the following:
 //!
@@ -49,9 +45,7 @@
 //!   which timeout at a certain `Instant` in time, or after
 //!   a certain `Duration`.
 //!
-//! ## [`Spinlock`]
-//!
-//! [`Spinlock`]: spinlock_waiter::Spinlock
+//! ## Spinlock
 //!
 //! A simple spinlock built on atomic primitives.
 //!

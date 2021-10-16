@@ -180,9 +180,6 @@ impl OnceWaiter {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Hash)]
-pub struct PanicError;
-
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Barrier};

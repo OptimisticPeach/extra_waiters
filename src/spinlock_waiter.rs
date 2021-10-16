@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 ///
 /// Under most circumstances this is incredibly
 /// inefficient and you should stick to some other
-/// kind of notifier.
+/// kind of lock.
 pub struct Spinlock(AtomicBool);
 
 impl Spinlock {
