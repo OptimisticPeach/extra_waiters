@@ -53,6 +53,14 @@
 //! can be useful in certain cases.
 //!
 
+#[feature(sync)]
 pub mod attentive_waiter;
+
+#[feature(sync)]
 pub mod once_waiter;
+
+#[feature(sync)]
 pub mod spinlock_waiter;
+
+#[feature(async)]
+pub mod async_waiters;
